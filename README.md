@@ -117,10 +117,10 @@ kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/
 kubectl get node
 ```
 จะแสดง master node ขึ้นมา เป็นอันเสร็จสิ้นในการติดตั้งฝั่ง master node
-`
+```
 NAME              STATUS     ROLES           AGE   VERSION
 k8s-master-node   Ready      control-plane   24m   v1.28.1
-`
+```
 
 ## 5. Join worker node เข้า cluster
 ส่วนในเครื่อง worker node ให้รันคำสั่งต่อไปนี้ (รันด้วย sudo)
@@ -133,11 +133,11 @@ sudo kubeadm join 192.168.1.200:6443 --token x06xhb.sdfsdfsdfsdf \
 kubectl get node
 ```
 จะแสดงเครื่อง master node และเครื่อง worker node ตามตัวอย่างต่อไปนี้
-`
+```
 NAME              STATUS     ROLES           AGE   VERSION
 k8s-master-node   Ready      control-plane   24m   v1.28.1
 k8s-woker-01      NotReady   <none>          10s   v1.28.1
-`
+```
 เป็นอันเสร็จสิ้นการติดตั้ง
 
 ## อ้างอิงจาก
