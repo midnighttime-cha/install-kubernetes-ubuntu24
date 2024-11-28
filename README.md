@@ -1,95 +1,144 @@
 # วิธีติดตั้ง Kubernetes บน Unbutu server 24.04LTS
 
-## 1. ทำการ Update/upgrade unbutu
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install apt-transport-https curl -y
-```
+การติดตั้งนี้มี Server จำนวน 2 เครื่อง ดังนี้
+1. Master node = 192.168.1.200
+2. Worker node = 192.168.1.201
 
-## 2. ติดตั้ง Contianerd
-```bash
-sudo apt install containerd -y
-```
-
-## 3. ตั้งค่า Continered
-```bash
-sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml > /dev/null
-sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-sudo systemctl restart containerd
-```
-
-## 4. ติดตั้ง kubernetes components
-```bash
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt update
-sudo apt install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
-```
-
-## 5. Disable swap
+## 1. Config OS (ทำทั้ง master & worker nodes)
+ทำการ Disable swap
 ```bash
 sudo swapoff -a
-sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+sudo sed -i 's/^.*swap/#&/' /etc/fstab
 ```
-
-## 6. ทำการ Load necessary kernel modules
+จากนั้น Add Kernel Parameters
 ```bash
+sudo tee /etc/modules-load.d/containerd.conf <<EOF
+overlay
+br_netfilter
+EOF
 sudo modprobe overlay
 sudo modprobe br_netfilter
 ```
-
-## 7. ทำการตั้งค่า Parameter สำหรับ sysctl
+ตั้งค่า kernel parameters
 ```bash
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
+sudo tee /etc/sysctl.d/kubernetes.conf <<EOF
 net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
 EOF
-```
-จากนั้นรันคำสั่ง
-```bash
+
 sudo sysctl --system
 ```
 
-## 8. เริ่มต้นการทำงาน Cluster (รันเฉพาะ master node):
+## 2. ติดตั้ง Docker (ทำทั้ง master & worker nodes)
+ติดตั้ง Docker’s apt repository 
+- Add Docker's official GPG key:
 ```bash
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
+- Add the repository to Apt sources:
+```bash
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+```
+จากนั้นทำการติดตั้ง ด้วยคำสั่ง
+```bash
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-## 9. ตั้งค่า kubeconfig สำหรับ User
+## 3. ติดตั้ง kubeadm, kubectl, kubelet(ทำทั้ง master & worker nodes)
+ทำการเพิ่ม signing key
+```bash
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+```
+จากนั้นรันคำสั่ง
+```bash
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+```
+ตั้งค่า containerd
+```bash
+containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
+sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+```
+จากนั้นทำการ ติดตั้ง kubeadm, kubelet และ kubectl ได้เลย
+```bash
+sudo apt update   
+sudo apt install -y kubeadm=1.28.1-1.1 kubelet=1.28.1-1.1 kubectl=1.28.1-1.1
+```
+หลังจากติดตั้งเสร็จให้ทำการ อัพเดต kubelet เป็น ip ของ node นั้น ๆ โดยแทนค่า <NODE_IP> ตาม ip ของ node นั้น ๆ เช่น 192.168.1.200 ถ้าทำบน master node และ 192.168.1.201 ถ้าทำบน worker node
+```bash
+echo "KUBELET_EXTRA_ARGS=--node-ip=<NODE_IP>" | sudo tee /etc/default/kubelet
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+sudo systemctl restart containerd
+```
+
+## 4. Setup master node
+Setup Master Node (ทำแค่ที่ master node) แทนค่า <MASTER_NODE_IP> เป็น ip ในกรณีนี้คือ 192.168.1.200
+```bash
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=<MASTER_NODE_IP>
+```
+เมื่อเสร็จแล้วจะมีคำสั่งแสดงขึ้นมาดังต่อไปนี้
+`
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+You should now deploy a pod network to the cluster. Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at: https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+You can now join any number of control-plane nodes by copying certificate authorities and service account keys on each node and then running the following as root:
+
+  kubeadm join 192.168.1.200:6443 --token x06xhb.sdfsdfsdfsdf \
+        --discovery-token-ca-cert-hash sha256:sdfksdflj98sdfd8f0sdf8sd7fsd0f0sdf8xcv7xcv9xcv7vxcv
+`
+ในเครื่อง master node ให้ copy ต่อไปนี้แล้วรัน
 ```bash
 mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
-จากนั้นมองหาประโยค `Alternatively, if you are the root user, you can run` แล้วรันตามคำสั่งที่ระบบระบุมาให้ตัวอย่างเช่น
+ติดตั้ง Network plugin ให้กับ Cluster
 ```bash
-export KUBECONFIG=/etc/kubernetes/admin.conf
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
 ```
-และทำการ copy คำสั่ง join cluster เก็บไว้ โดยมองหาประโยค `Then you can join any number of worker nodes by running the following on each as root:` ดังตั้วอย่างต่อไปนี้
+หลังจากเสร็จสิ้นให้ทำการตรวจสอบด้วยคำสั่ง
 ```bash
-kubeadm join 172.31.19.36:6443 --token 922x9d.v0jn4c8he0s286js \
-          --discovery-token-ca-cert-hash sha256:8897fd8eb97f2ea0686ccf7507f287ffffd5cf681496fb324940330561c80e4c
+kubectl get node
 ```
-โดยเก็บไว้อย่าให้หายเพื่อใช้ในการ join cluster
+จะแสดง master node ขึ้นมา เป็นอันเสร็จสิ้นในการติดตั้งฝั่ง master node
+`
+NAME              STATUS     ROLES           AGE   VERSION
+k8s-master-node   Ready      control-plane   24m   v1.28.1
+`
 
-## 10. ติดตั้ง Flannel network plugin (รันเฉพาะ master node)
+## 5. Join worker node เข้า cluster
+ส่วนในเครื่อง worker node ให้รันคำสั่งต่อไปนี้ (รันด้วย sudo)
 ```bash
-kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+sudo kubeadm join 192.168.1.200:6443 --token x06xhb.sdfsdfsdfsdf \
+        --discovery-token-ca-cert-hash sha256:sdfksdflj98sdfd8f0sdf8sd7fsd0f0sdf8xcv7xcv9xcv7vxcv
 ```
+เมื่อเสร็จสิ้นให้กลับไปตรวจสอบการการ join cluster ที่เครื่อง master node
+```bash
+kubectl get node
+```
+จะแสดงเครื่อง master node และเครื่อง worker node ตามตัวอย่างต่อไปนี้
+`
+NAME              STATUS     ROLES           AGE   VERSION
+k8s-master-node   Ready      control-plane   24m   v1.28.1
+k8s-woker-01      NotReady   <none>          10s   v1.28.1
+`
+เป็นอันเสร็จสิ้นการติดตั้ง
 
-## 11. ทำการ Verify การติดตั้ง
-```bash
-kubectl get nodes
-kubectl get pods --all-namespaces
-```
-
-## 12. ทำการ Join worker nodes กับ Cluster
-- เริ่มติดตั้ง Kubernetes ใน Worker node ตามลำดับ
-- ใช้คำสั่ง `kubeadm join` เพื่อให้รองรับคำสั่ง `kubeadm init` แสดงผลออกบน master node
-- โดยจะต้องรันคำสั่งด้วย `root`
-```bash
-kubeadm join 172.31.19.36:6443 --token 922x9d.v0jn4c8he0s286js --discovery-token-ca-cert-hash sha256:8897fd8eb97f2ea0686ccf7507f287ffffd5cf681496fb324940330561c80e4c
-```
+## อ้างอิงจาก
+- [ตั้ง kubernetes cluster เองแบบลำบากด้วย kubeadm](https://srank123.medium.com/%E0%B8%95%E0%B8%B1%E0%B9%89%E0%B8%87-kubernetes-cluster-%E0%B9%80%E0%B8%AD%E0%B8%87%E0%B9%81%E0%B8%9A%E0%B8%9A%E0%B8%A5%E0%B8%B3%E0%B8%9A%E0%B8%B2%E0%B8%81%E0%B8%94%E0%B9%89%E0%B8%A7%E0%B8%A2-kubeadm-c7c84ba58dc7)
