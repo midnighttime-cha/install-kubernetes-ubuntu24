@@ -86,7 +86,7 @@ Setup Master Node (ทำแค่ที่ master node) แทนค่า <MAS
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=<MASTER_NODE_IP>
 ```
 เมื่อเสร็จแล้วจะมีคำสั่งแสดงขึ้นมาดังต่อไปนี้
-`
+```
 To start using your cluster, you need to run the following as a regular user:
 
   mkdir -p $HOME/.kube
@@ -101,7 +101,7 @@ You can now join any number of control-plane nodes by copying certificate author
 
   kubeadm join 192.168.1.200:6443 --token x06xhb.sdfsdfsdfsdf \
         --discovery-token-ca-cert-hash sha256:sdfksdflj98sdfd8f0sdf8sd7fsd0f0sdf8xcv7xcv9xcv7vxcv
-`
+```
 ในเครื่อง master node ให้ copy ต่อไปนี้แล้วรัน
 ```bash
 mkdir -p $HOME/.kube
