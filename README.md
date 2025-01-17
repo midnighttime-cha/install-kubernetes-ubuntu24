@@ -110,7 +110,8 @@ mkdir -p $HOME/.kube
 ```
 ติดตั้ง Network plugin ให้กับ Cluster
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+wget https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+kubectl apply -f calico.yaml
 ```
 หลังจากเสร็จสิ้นให้ทำการตรวจสอบด้วยคำสั่ง
 ```bash
