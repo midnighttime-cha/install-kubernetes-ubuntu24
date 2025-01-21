@@ -1,14 +1,19 @@
-# วิธีติดตั้ง Kubernetes บน Unbutu server 24.04LTS
+![image](https://github.com/user-attachments/assets/cabb84f0-3a84-4c8e-b699-08a71de69e6d)# วิธีติดตั้ง Kubernetes บน Unbutu server 24.04LTS
 
 การติดตั้งนี้มี Server จำนวน 2 เครื่อง ดังนี้
 1. Master node = 192.168.1.200
 2. Worker node = 192.168.1.201
 
 ## 1. Config OS (ทำทั้ง master & worker nodes)
+ทำการอัพเดทระบบ
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
 ทำการ Disable swap
 ```bash
 sudo swapoff -a
-sudo sed -i 's/^.*swap/#&/' /etc/fstab
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 ```
 จากนั้น Add Kernel Parameters
 ```bash
@@ -35,42 +40,37 @@ sudo sysctl --system
 - Add Docker's official GPG key:
 ```bash
 sudo apt update
-sudo apt install ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
+sudo apt install -y curl gnupg2 software-properties-common apt-transport-https ca-certificates
 ```
 - Add the repository to Apt sources:
 ```bash
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt update
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmour -o /etc/apt/trusted.gpg.d/docker.gpg
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 ```
 จากนั้นทำการติดตั้ง ด้วยคำสั่ง
 ```bash
-sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo apt update
+sudo apt install -y containerd.io
 ```
 
 ## 3. ติดตั้ง kubeadm, kubectl, kubelet(ทำทั้ง master & worker nodes)
-ทำการเพิ่ม signing key
-```bash
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-```
-จากนั้นรันคำสั่ง
-```bash
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-```
 ตั้งค่า containerd
 ```bash
 containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
 sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
 ```
+เพิ่ม Apt repository ของ kubernetes
+```bash
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+```
+
+
 จากนั้นทำการ ติดตั้ง kubeadm, kubelet และ kubectl ได้เลย
 ```bash
-sudo apt update   
-sudo apt install -y kubeadm=1.28.1-1.1 kubelet=1.28.1-1.1 kubectl=1.28.1-1.1
+sudo apt update 
+sudo apt install -y kubelet kubeadm kubectl 
+sudo apt-mark hold kubelet kubeadm kubectl
 ```
 หลังจากติดตั้งเสร็จให้ทำการ อัพเดต kubelet เป็น ip ของ node นั้น ๆ โดยแทนค่า <NODE_IP> ตาม ip ของ node นั้น ๆ เช่น 192.168.1.200 ถ้าทำบน master node และ 192.168.1.201 ถ้าทำบน worker node
 ```bash
