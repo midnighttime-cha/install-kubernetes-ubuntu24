@@ -45,21 +45,24 @@ sudo systemctl enable --now docker
 ```
 
 3. ติดตั้ง `cri-dockerd` (ทุก Node)
+- ดาวน์โหลด Binary
 ```bash
-# 1. ดาวน์โหลด Binary
 wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.16/cri-dockerd-0.3.16.amd64.tgz
 tar -xvf cri-dockerd-0.3.16.amd64.tgz
-
-# 2. ย้ายไปที่ /usr/local/bin
+```
+- ย้ายไปที่ /usr/local/bin
+```bash
 sudo mv cri-dockerd/cri-dockerd /usr/local/bin/
-
-# 3. ดาวน์โหลดไฟล์ Service จากต้นฉบับ
+```
+- ดาวน์โหลดไฟล์ Service จากต้นฉบับ
+```bash
 wget https://raw.githubusercontent.com/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.service
 wget https://raw.githubusercontent.com/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.socket
 sudo mv cri-docker.service cri-docker.socket /etc/systemd/system/
 sudo sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd,' /etc/systemd/system/cri-docker.service
-
-# 4. เริ่มระบบ
+```
+- เริ่มระบบ
+```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now cri-docker.socket
 ```
