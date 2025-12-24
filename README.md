@@ -83,3 +83,39 @@ sudo apt update
 sudo apt install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 ```
+5. เริ่มต้น Cluster (เฉพาะ Master Node)
+- ติดตั้ง conntrack
+```bash
+sudo apt update
+sudo apt install -y conntrack
+```
+- (Optional) ตรวจสอบแพ็กเกจที่จำเป็นอื่นๆ
+```bash
+sudo apt install -y socat ebtables ipset
+```
+- ติดตั้ง Kubeadm, Kubelet และ Kubectl (ทุก Node)
+คำสั่งนี้จะทำการสร้าง Control Plane โดยเราต้องระบุ Socket ของ cri-dockerd ลงไปเพื่อให้มันรู้ว่าต้องคุยกับ Docker
+```bash
+sudo kubeadm init \
+  --pod-network-cidr=10.244.0.0/16 \
+  --cri-socket unix:///var/run/cri-dockerd.sock
+```
+- ระบบจะให้คำสั่งสำหรับสร้างโฟลเดอร์ `.kube` (รันใน user ปกติ):
+```bash
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+6. ติดตั้ง Network Plugin (CNI)
+```bash
+kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+```
+7. เพิ่ม Worker Node (เฉพาะ Worker)
+นำคำสั่ง `kubeadm join` ที่ได้จากหน้าจอตอนรัน `init` ในขั้นตอนที่ 5 มาวางในเครื่อง Worker แต่ ต้องเพิ่ม `--cri-socket` ต่อท้ายด้วย:
+```bash
+sudo kubeadm join <MASTER_IP>:6443 --token <TOKEN> \
+    --discovery-token-ca-cert-hash sha256:<HASH> \
+    --cri-socket unix:///var/run/cri-dockerd.sock
+```
+
+
