@@ -1,4 +1,3 @@
-![image](https://github.com/user-attachments/assets/cabb84f0-3a84-4c8e-b699-08a71de69e6d)
 # วิธีติดตั้ง Kubernetes บน Unbutu server 24.04LTS
 
 การติดตั้งนี้มี Server จำนวน 2 เครื่อง ดังนี้
