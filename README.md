@@ -112,6 +112,12 @@ kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/
 ```
 7. เพิ่ม Worker Node (เฉพาะ Worker)
 นำคำสั่ง `kubeadm join` ที่ได้จากหน้าจอตอนรัน `init` ในขั้นตอนที่ 5 มาวางในเครื่อง Worker แต่ ต้องเพิ่ม `--cri-socket` ต่อท้ายด้วย:
+- ติดตั้งสิ่งจำเป็นบน Worker Node
+```bash
+sudo apt update
+sudo apt install -y conntrack socat ebtables ipset
+```
+- Joint Worker Node
 ```bash
 sudo kubeadm join <MASTER_IP>:6443 --token <TOKEN> \
     --discovery-token-ca-cert-hash sha256:<HASH> \
