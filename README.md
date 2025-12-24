@@ -3,14 +3,14 @@
 1. เตรียมระบบพื้นฐาน (ทุก Node)
 Kubernetes ต้องการการตั้งค่าระบบที่เฉพาะเจาะจงเพื่อให้เน็ตเวิร์กและหน่วยความจำทำงานได้ถูกต้อง
 
-1.1. ปิด Swap (จำเป็นมาก):
+- ปิด Swap (จำเป็นมาก):
 
 ```bash
 sudo swapoff -a
 sudo sed -i '/ swap / s/^/#/' /etc/fstab
 ```
 
-1.2. โหลด Kernel Modules ที่จำเป็น:
+- โหลด Kernel Modules ที่จำเป็น:
 ```bash
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
 overlay
@@ -21,7 +21,7 @@ sudo modprobe overlay
 sudo modprobe br_netfilter
 ```
 
-1.3 ตั้งค่า Network Forwarding:
+- ตั้งค่า Network Forwarding:
 ```bash
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-iptables  = 1
