@@ -1,4 +1,4 @@
-# วิธีติดตั้ง Kubernetes บน Unbutu server 24.04LTS
+# วิธีติดตั้ง Kubernetes บน Unbutu server 22.04LTS
 
 การติดตั้งนี้มี Server จำนวน 2 เครื่อง ดังนี้
 1. Master node = 192.168.1.200
